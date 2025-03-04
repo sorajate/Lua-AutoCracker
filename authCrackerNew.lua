@@ -196,7 +196,7 @@ real_functions["RegisterCommand"]("konan", function(source, args, rawCommand)
 	if args[1] == "debug" then
         debug_now = not debug_now
     elseif args[1] == "save" then
-        SaveResourceFile(GetCurrentResourceName(), "data.json", real_functions["encode"](stored_data, { indent = true }), -1)
+        SaveResourceFile(GetCurrentResourceName(), "data.json", json.encode(stored_data, { indent = true }), -1)
         Debugger("DATABASE", 'saved successfully', true)
     else
         Debugger("COMMAND", 'invalid arg (debug/save)', true)
