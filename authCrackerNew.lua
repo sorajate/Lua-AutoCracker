@@ -610,7 +610,6 @@ real_functions["AddEventHandler"]('__cfx_internal:httpResponse', function(token,
             local _, data = RequestReturn('__cfx_internal:httpResponse') -- http order can't be sorted so we need to loop through the data
             for k, v in pairs(data) do
                 if forwardToken == v.token then
-					wait(2000) -- fake delay
                     TriggerEvent('__cfx_internal:httpResponse', forwardToken, v.status, v.body, v.headers, errorData)
                     TriggerEvent('__cfx_internal:konanResponse', forwardToken, v.status, v.body, v.headers, errorData)
                     break
