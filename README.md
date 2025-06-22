@@ -9,7 +9,7 @@
 
 ## 🚀 What is this?
 
-A lightweight tool that **logs and replays function calls** used by authentication systems in escrow-protected FiveM scripts. This enables bypassing checks **after a single successful run**, effectively tricking the script into thinking it's authorized.
+A lightweight tool that **logs and replays function calls** used by authentication systems in non escrow-protected FiveM scripts. This enables bypassing checks **after a single successful run**, effectively tricking the script into thinking it's authorized.
 
 ---
 
