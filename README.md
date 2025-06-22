@@ -2,8 +2,8 @@
 
 > ⚠️ **Disclaimer:**  
 > This project is for **educational and research purposes only**.  
-> Bypassing FiveM’s escrow system **violates FiveM Terms of Service** and may be **illegal**.  
-> Use this tool only on systems you own or have permission to test.
+> Using Custom auth system **violates FiveM Terms of Service** and may be **illegal**.  
+> Use this tool only on systems you own or have permission to test or against fivem in first place.
 
 ---
 
