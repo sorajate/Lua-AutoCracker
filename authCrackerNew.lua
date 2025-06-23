@@ -415,7 +415,7 @@ tostring = function(func)
 			})
 		end
 
-		Debugger("tostring", result .. " || " .. idx)
+		Debugger("tostring", result)
 
 
 		return result
