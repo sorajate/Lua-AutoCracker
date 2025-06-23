@@ -390,7 +390,6 @@ tostring = function(func)
 	if (address == "function" or address == "table" or address == "userdata") then
 
 		local _, result
-		idx = idx + 1
 
 		if crack_now then
 			local _, res = RequestReturn('tostring')
