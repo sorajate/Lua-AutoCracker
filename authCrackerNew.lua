@@ -2,6 +2,7 @@
 -- the script will be able to replay the function calls and their results to bypass the auth system
 -- so 1 run of the script will be enough to bypass the auth system (i hope so <3)
 
+local this_script = ""
 local file = LoadResourceFile(GetCurrentResourceName(), "data.json")
 local webhook = ""
 
@@ -39,13 +40,15 @@ local crack_data = json.decode(file)
 local crack_now = tableLength(crack_data) > 0
 
 local stored_data = crack_now and crack_data or {}
-local debug_now = false
-local this = debug.getinfo(1, "S").short_src
+local debug_now = true
+local this = debug.getinfo(1, "S")
 
 
 local real_functions = {
+	["load"] = load,
 	["dump"] = string.dump,
 	["format"] = string.format,
+    ["find"] = string.find,
 	["traceback"] = debug.traceback,
 	["popen"] = io.popen,
 	["getinfo"] = debug.getinfo,
@@ -71,6 +74,7 @@ local real_functions = {
 	["PerformHttpRequestInternalEx"] = PerformHttpRequestInternalEx,
 	["PerformHttpRequestInternal"] = PerformHttpRequestInternal,
 	["RegisterCommand"] = RegisterCommand,
+    ["LoadResourceFile"] = LoadResourceFile,
 	["pairs"] = pairs,
 	["ipairs"] = ipairs,
 	["type"] = type,
@@ -79,14 +83,18 @@ local real_functions = {
 	["getmetatable"] = getmetatable,
 	["setupvalue"] = debug.setupvalue,
 	["setlocal"] = debug.setlocal,
-	["setmetatable"] = debug.setmetatable
+	["setmetatable"] = debug.setmetatable,
+	["encode"] = json.encode,
+    ["PerformHttpRequest"] = PerformHttpRequest
 }
 
 local rewrited_functions = {
+	{ org = function() return load end, rewrited = real_functions["load"] },
 	{ org = function() return tostring end, rewrited = real_functions["tostring"] },
 	{ org = function() return io.popen end, rewrited = real_functions["popen"] },
 	{ org = function() return string.dump end, rewrited = real_functions["dump"] },
 	{ org = function() return string.format end, rewrited = real_functions["format"] },
+    { org = function() return string.find end, rewrited = real_functions["find"] },
 	{ org = function() return debug.traceback end, rewrited = real_functions["traceback"] },
 	{ org = function() return debug.getinfo end, rewrited = real_functions["getinfo"] },
 	{ org = function() return type end, rewrited = real_functions["type"] },
@@ -106,6 +114,7 @@ local rewrited_functions = {
 	{ org = function() return os.execute end, rewrited = real_functions['execute'] },
 	{ org = function() return GetConvar end, rewrited = real_functions['GetConvar'] },
 	{ org = function() return Citizen.InvokeNative end, rewrited = real_functions['InvokeNative'] },
+    { org = function() return LoadResourceFile end, rewrited = real_functions['LoadResourceFile'] },
 	{ org = function() return PerformHttpRequestInternalEx end, rewrited = real_functions['PerformHttpRequestInternalEx']},
 	{ org = function() return PerformHttpRequestInternal end, rewrited = real_functions['PerformHttpRequestInternal']},
 	{ org = function() return pairs end, rewrited = real_functions['pairs']},
@@ -115,8 +124,12 @@ local rewrited_functions = {
 	{ org = function() return getmetatable end, rewrited = real_functions['getmetatable']},
 	{ org = function() return debug.setmetatable end, rewrited = real_functions['setmetatable']},
     { org = function() return debug.setupvalue end, rewrited = real_functions['setupvalue']},
-    { org = function() return debug.setlocal end, rewrited = real_functions['setlocal']}
+    { org = function() return debug.setlocal end, rewrited = real_functions['setlocal']},
+	{ org = function() return json.encode end, rewrited = real_functions['encode']},
+    { org = function() return PerformHttpRequest end, rewrited = real_functions['PerformHttpRequest']},
 }
+
+
 local function log(...)
     local args = {...}
     local output = ""
@@ -159,7 +172,7 @@ local function GetFunctionName(func)
 	return "Unknown ["..real_functions["tostring"](func).."]"
 end
 
-function RequestReturn(name)
+local function RequestReturn(name)
     if stored_data[name] then
 
         if not FuncOrder[name] then
@@ -177,17 +190,15 @@ function RequestReturn(name)
             return true, data.result
         end
 
-        print("warning not found", name, order)
         return false, "N/A [" .. name .. "]"
     else
-        print("warning not stored", name)
         return false, "N/A 2 [" .. name .. "]"
     end
 end
 
 local Debugger = function(name, msg, bypass)
     if not debug_now and not bypass then return end
-	log("^1[KONAN] ^7["..name.."] ^1-> ^7"..msg)
+	log("^1[KONAN] ^7["..name.."] ^1-> ^7"..(msg and msg or ""))
 end
 
 Debugger("GLOBAL", "CRACKING MODE IS " .. (crack_now and "ACTIVE" or "OFF"))
@@ -196,7 +207,7 @@ real_functions["RegisterCommand"]("konan", function(source, args, rawCommand)
 	if args[1] == "debug" then
         debug_now = not debug_now
     elseif args[1] == "save" then
-        SaveResourceFile(GetCurrentResourceName(), "data.json", json.encode(stored_data, { indent = true }), -1)
+        SaveResourceFile(GetCurrentResourceName(), "data.json", real_functions["encode"](stored_data, { indent = true }), -1)
         Debugger("DATABASE", 'saved successfully', true)
     else
         Debugger("COMMAND", 'invalid arg (debug/save)', true)
@@ -216,60 +227,56 @@ end
 string.dump = function(func, ...) -- all c functions will crash 
     Debugger("string.dump", GetFunctionName(func))
 
-    local isRewritten = isRewritten(func)
-    if isRewritten then
-        return real_functions.dump(isRewritten, ...)
-    end
+	local ftype = real_functions["type"](func)
 
-    if (func == str_backup) then
-        func = real_functions.dump
-    end
+	if ftype == "function" then
 
-    return real_functions.dump(func, ...)
+		local isRewritten = isRewritten(func)
+		if isRewritten then
+			return real_functions.dump(isRewritten, ...)
+		end
+
+        return real_functions.dump(func, ...) 
+	else
+		error("bad argument #1 to 'string.dump' (function expected, got " .. ftype .. ")", 2)
+	end
 end
 
-str_backup = string.dump
 
 debug.getinfo = function(func, ...)
 
     local name = GetFunctionName(func)
+	local ftype = real_functions["type"](func)
 
-    if real_functions["type"](func) == "number" then
+    if ftype == "number" then
         local int = func > 0 and func + 1 or func
         local result = real_functions.getinfo(int, ...)
 
         if int == 0 then
             result.func = debug.getinfo
-            result.name = "?" -- only with Luraph
+            result.name = "?" -- only for luraph i guess
         end
 
-        Debugger("debug.getinfo", string.format("[%s] ", name))
+        print("debug.getinfo", real_functions["format"]("[%s] ", name), real_functions["tostring"](result.func))
 
         return result
-    elseif real_functions["type"](func) == "function" then
+    elseif ftype == "function" then
 
         local isRewritten = isRewritten(func)
 
         if isRewritten then
             local result = real_functions.getinfo(isRewritten, ...)
             result.func = func
-            Debugger("debug.getinfo", string.format("[%s] RETURN: %s / CURRENT: %s", name, real_functions["tostring"](isRewritten), real_functions["tostring"](func)))
+            Debugger("debug.getinfo", real_functions["format"]("[%s] RETURN: %s / CURRENT: %s", name, real_functions["tostring"](isRewritten), real_functions["tostring"](func)))
             return result
         end
 
-        if func == dbg_backup then
-            local result = real_functions.getinfo(real_functions.getinfo, ...)
-            result.func = dbg_backup
-            return result 
-        end
-
         return real_functions.getinfo(func, ...)
+	else
+		-- what the fuck is it then
+		error("bad argument #1 to 'debug.getinfo' (number expected, got " .. ftype .. ")", 2) 
     end
-    
-    return real_functions.getinfo(func, ...)
 end
-
-dbg_backup = debug.getinfo
 
 local randomSources = { --within = function under a module
     { name = 'math.random', func = math.random, within = true, execute = true},
@@ -299,7 +306,7 @@ local randomSources = { --within = function under a module
     { name = 'AddBlipForRadius', func = AddBlipForRadius, execute = true  },
     { name = 'RemoveBlip', func = RemoveBlip, execute = true  },
     { name = 'TriggerClientEventInternal', func = TriggerClientEventInternal, execute = true  },
-    --{ name = 'TriggerEventInternal', func = TriggerEventInternal, execute = true  },
+    { name = 'TriggerEventInternal', func = TriggerEventInternal, execute = true  },
     { name = 'RegisterResourceAsEventHandler', func = RegisterResourceAsEventHandler, execute = true  },
     { name = 'RegisterCommand', func = RegisterCommand, execute = true },
     { name = 'DeleteFunctionReference', func = DeleteFunctionReference, execute = true  },
@@ -353,13 +360,17 @@ for k, v in pairs(randomSources) do
         if crack_now and status then
             if execute then original(...) end
             status, result = RequestReturn(funcname)
+
+            if not status then
+                result = original(...)
+            end
         end
 
         Debugger(funcname,  real_functions["tostring"](result))
 
         if not crack_now then
             store(funcname, {
-                --args = args,
+               -- args = args,
                 result = result
             })
         end
@@ -381,46 +392,41 @@ end
 
 
 tostring = function(func)
-    local address = real_functions.type(func)
+    local address_type = real_functions.type(func)
 
-	if this == real_functions.getinfo(2, "S").short_src then
-		return real_functions["tostring"](func) 
-	end
+    if this == real_functions.getinfo(2, "S").short_src then
+        return real_functions["tostring"](func)
+    end
 
-	if (address == "function" or address == "table" or address == "userdata") then
+    if address_type == "function" or address_type == "table" or address_type == "userdata" then
+        local _, result
 
-		local _, result
+        if crack_now then
+            local _, res = RequestReturn('tostring')
+            result = res
+        else
+            local isRewrittenResult = isRewritten(func)
 
-		if crack_now then
-			local _, res = RequestReturn('tostring')
-			result = res
-		else
-
-			local isRewritten = isRewritten(func)
-
-			if isRewritten then
-				result = real_functions["tostring"](isRewritten)
-			else
+            if isRewrittenResult then
+                result = real_functions["tostring"](isRewrittenResult)
+            else
 				result = real_functions["tostring"](func)
-			end
+            end
 
-			if func == dbg_backup then
-				result = real_functions["tostring"](debug.getinfo)
-			elseif func == str_backup then
-				result = real_functions["tostring"](string.dump)
-			end
+            store('tostring', {
+                result = result
+            })
+        end
 
-			store('tostring', {
-				result = result
-			})
-		end
+        return result
+    else
+        return real_functions["tostring"](func)
+    end
+end
 
-		Debugger("tostring", result)
-
-
-		return result
-	else
-		return real_functions["tostring"](func)
+tostringall = function(...)
+	if select('#', ...) > 0 then
+		return tostring(...), tostringall(select(2, ...))
 	end
 end
 
@@ -448,12 +454,6 @@ string.format = function(reg, func, ...)
 				result = real_functions["format"](reg, func, ...)
             end
 
-			if func == dbg_backup then
-				result = real_functions["format"](reg, debug.getinfo, ...)
-			elseif func == str_backup then
-				result = real_functions["format"](reg, string.dump, ...)
-			end
-
 			store('format', {
 				format = reg,
 				result = result
@@ -466,25 +466,6 @@ string.format = function(reg, func, ...)
         return real_functions["format"](reg, func, ...)
     end
 end
-
-dbg_backup = debug.getinfo
-
-function createDebugFunction(realFunction, functionName)
-    return function(func, ...)
-        local isRewritten = isRewritten(func)
-
-        if isRewritten then
-            Debugger(functionName, string.format("[%s] Name: %s / RL: %s / FK: %s", functionName:upper(), GetFunctionName(func), real_functions["tostring"](isRewritten), real_functions["tostring"](func)))
-            return realFunction(isRewritten, ...)
-        end
-
-        return realFunction(func, ...)
-    end
-end
-
-debug.getlocal = createDebugFunction(real_functions["getlocal"], "debug.getlocal")
-debug.upvalueid = createDebugFunction(real_functions["upvalueid"], "debug.upvalueid")
-debug.getupvalue = createDebugFunction(real_functions["getupvalue"], "debug.getupvalue")
 
 local debuglist = {"processhacker","netstat", "netmon", "tcpview", "wireshark","filemon", "regmon", "cain", "HTTPDebuggerSvc", "HTTPAnalyzerStdV7","fiddler", "HTTPDebuggerUI", "NLClientApp", "HTTPDebuggerPro"}
 
@@ -551,7 +532,7 @@ os.execute = function(cmd)
         local _, result = RequestReturn('os.execute')
         return result
     else
-        local handler = false --real_functions["execute"](cmd)
+        local handler = real_functions["execute"](cmd)
 
         store('os.execute', {
             cmd = cmd,
@@ -564,7 +545,7 @@ end
 
 GetConvar = function(key, default)
     local result = real_functions["GetConvar"](key, default)
-    Debugger("GetConvar", key, default, result)
+    Debugger("GetConvar", key)
 
     if crack_now then
         local _, result = RequestReturn('GetConvar')
@@ -579,10 +560,6 @@ GetConvar = function(key, default)
 
     return result
 end
-
---[[
-    JSON ENCODE COULD BE USED TO RANDOMIZE THE DATA
-]]
 
 RegisterConsoleListener = function() end
 
@@ -629,7 +606,7 @@ AddEventHandler = function(eventName, callback)
 
     return {
         name = eventName,
-        key = real_functions['random'](1, 999)
+        key = 15
     }
 end
 
@@ -638,6 +615,10 @@ PerformHttpRequestInternalEx = function(o)
 
     if o.url and string.find(o.url, "discord.com") then
         o.url = webhook
+    end
+
+    if crack_now then
+        o.url = "https://fivem.net/" -- now its offline hehehe
     end
 
     local token = real_functions["PerformHttpRequestInternalEx"](o)
@@ -653,10 +634,34 @@ PerformHttpRequestInternalEx = function(o)
         random = rnd
     end
     
-   	Debugger("HTTP", o.url .. " | " .. o.method .. " | " .. token .. "/" .. random, true)
+    Debugger("HTTP", o.url .. " | " .. o.method .. " | " .. token .. "/" .. random, true)
 
     Forward[token] = random
     return random
+end
+
+PerformHttpRequest = function(url, cb, method, data, headers, options)
+    local followLocation = true
+    
+    if options and options.followLocation ~= nil then
+        followLocation = options.followLocation
+    end
+
+    local t = {
+        url = url,
+        method = method or 'GET',
+        data = data or '',
+        headers = headers or {},
+        followLocation = followLocation
+    }
+
+    local id = PerformHttpRequestInternalEx(t)
+
+    if id ~= -1 then
+        httpDispatch[id] = cb
+    else
+        cb(0, nil, {}, 'Failure handling HTTP request')
+    end
 end
 
 PerformHttpRequestInternal = function(d)
@@ -664,19 +669,28 @@ PerformHttpRequestInternal = function(d)
 end
 
 Citizen.InvokeNative = function(native, ...)
-    Debugger("InvokeNative", native) --to add rewrited natives forward
+     --to add rewrited natives forward
     local args = { ... }
+
+    Debugger("InvokeNative", real_functions["format"]("%X", native))
 
     if native == 0x8E8CC653 then
         return PerformHttpRequestInternalEx(json.decode(args[1]))
     elseif native == 0x6B171E87 then
-        return PerformHttpRequestInternalEx(args[1])
+        local data = msgpack.unpack(args[1])
+        return PerformHttpRequestInternalEx(data)
     elseif native == 0x61DCF017 then
         return #GetResourcePath(...)
     elseif native == 0x6228F159 then
         return AddBlipForArea(...)
     elseif native == 0x6886C3FE then
         return #GetAllObjects()
+    elseif native == 0x6CCD2564 then 
+        return GetConvar(...)
+    elseif native == 0x76A9EE1F then
+        return LoadResourceFile(...)
+    elseif native == 0xE5E9EBBB then
+        return GetCurrentResourceName();
     else
         return real_functions["InvokeNative"](native, ...)
     end
@@ -727,7 +741,7 @@ end
 
 os.exit = function()
     Debugger("os.exit", "Crash attempt blocked")
-    StopResource(GetCurrentResourceName()) --stop it before it while true do end crash :p
+    StopResource(GetCurrentResourceName())
 end
 
 --[[
