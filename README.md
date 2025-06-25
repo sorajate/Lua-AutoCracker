@@ -4,6 +4,7 @@
 > This project is for **educational and research purposes only**.  
 > Using Custom auth system **violates FiveM Terms of Service** and may be **illegal**.  
 > Use this tool only on systems you own or have permission to test or against fivem in first place.
+> We do not take any responsibility for any damage, legal issues, or consequences resulting from the use of this tool.
 
 ---
 
