@@ -34,7 +34,7 @@ This will print every native used by the script in your server console as it run
 
 
 
-## 🧠 Tip #2: Log Functions Accessed in a Table
+## 🧠 Tip #2: Log Functions Accessed in a Table (and Bypass `getmetatable` Detection)
 
 Want to see what functions a script uses from `string`, `table`, `os`, or any table? Wrap the table with a metatable to intercept access:
 
@@ -60,6 +60,38 @@ string = setmetatable({}, {
 
 This logs every time `string.gsub`, `string.dump`, or any other function is used — even dynamically.
 
+---
+
+### ⚠️ Auth Detection via `getmetatable(string)`
+
+Some FiveM auth systems detect this hooking by checking:
+
+```lua
+print(getmetatable(string) == true)  -- or just getmetatable(string)
+```
+
+Since the original `string` table has no metatable, hooking it with a metatable causes `getmetatable(string)` to return that metatable table (which is truthy), flagging the hook.
+
+---
+
+### 🛠️ Bypass Method: Hook `getmetatable` to hide the metatable
+
+You can hook `getmetatable` itself to return `false` (or nil) when asked about `string`, but behave normally otherwise:
+
+```lua
+local original_getmetatable = getmetatable
+
+getmetatable = function(tbl)
+    if tbl == string then
+        return false  -- hide the hook metatable
+    end
+    return original_getmetatable(tbl)
+end
+```
+
+This fools auth scripts that check `getmetatable(string)` into thinking the `string` table is untouched, while your hook still logs access and calls.
+
+---
 
 ## 🧠 Tip #3: Inject Crackers Without Modifying `fxmanifest.lua`
 
