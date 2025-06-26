@@ -85,7 +85,8 @@ local real_functions = {
 	["setlocal"] = debug.setlocal,
 	["setmetatable"] = debug.setmetatable,
 	["encode"] = json.encode,
-    ["PerformHttpRequest"] = PerformHttpRequest
+    ["PerformHttpRequest"] = PerformHttpRequest,
+    ["GetStateBagValue"] = GetStateBagValue
 }
 
 local rewrited_functions = {
@@ -127,6 +128,7 @@ local rewrited_functions = {
     { org = function() return debug.setlocal end, rewrited = real_functions['setlocal']},
 	{ org = function() return json.encode end, rewrited = real_functions['encode']},
     { org = function() return PerformHttpRequest end, rewrited = real_functions['PerformHttpRequest']},
+    { org = function() return GetStateBagValue end, rewrited = real_functions['GetStateBagValue']},
 }
 
 
@@ -333,6 +335,7 @@ local randomSources = { --within = function under a module
     { name = 'SetRoutingBucketPopulationEnabled', func = SetRoutingBucketPopulationEnabled, execute = true  },
     { name = 'TaskEveryoneLeaveVehicle', func = TaskEveryoneLeaveVehicle, execute = true  },
     { name = 'ScheduleResourceTick', func = ScheduleResourceTick, execute = true  },
+    { name = 'GetStateBagValue', func = GetStateBagValue, execute = true  },
     --{ name = 'AddEventHandler', func = AddEventHandler, execute = true  },
     
 }
