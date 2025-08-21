@@ -16,6 +16,7 @@ A lightweight tool that **logs and replays function calls** used by authenticati
 
 ## ✅ Confirmed Working On:
 
+- 🟢 Waveshield (latest)
 - 🟢 ChocoHax (latest)
 - 🟢 FileSafety v2
 - 🟢 DNZ v3
